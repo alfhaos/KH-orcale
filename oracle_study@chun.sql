@@ -166,3 +166,135 @@ from
     tb_student
 where
   extract(year from entrance_date) = 2002 and  substr(student_address,1,3) ='전주시' and absence_yn = 'N';
+
+
+--1. 의학계열 학과 학생의 학생명, 학과명 조회
+select 
+    s.student_name,
+    d.department_name
+    
+from 
+    tb_student s join tb_department d
+        on s.department_no = d.department_no
+where
+    s.department_no in ('053','054','055');
+
+--2. 2006학번의 학생명, 담당교수명 조회
+select
+    s.student_name,
+    p.professor_name
+from
+    tb_student s join  tb_professor p
+        on s.coach_professor_no = p.professor_no
+where
+    extract(year from entrance_date) = '2006';
+
+--3.자연과학계열의  수업명, 학과명 조회
+select
+    c.class_name,
+    d.department_name
+from
+    tb_class c join tb_department d
+        on c.department_no = d.department_no
+where
+    d.category = '자연과학';
+    
+--4. 담당학생이 한명도 없는 교수 조회
+
+-- inner join 579 --> 담당교수가 없는 학생 제외
+-- left join 588 : 579 + 9 --> 담당교수가 없는 학생 포함
+-- right join 580 : 579 + 1(담당학생이 없는 교수) --> 담당학생이 없는 교수 포함
+
+select
+    p.professor_name
+from
+    tb_student s right join tb_professor p
+        on s.coach_professor_no = p.professor_no
+where
+    s.COACH_PROFESSOR_NO IS NULL;
+    
+--08-31 @실습문제
+--1. 휴학중인 학번, 학생명, 학과명조회
+select 
+    S.student_no,
+    S.student_name,
+    d.department_name
+from
+    tb_student S left join tb_department D
+        on S.department_no = D.department_no
+where
+    absence_yn = 'Y';
+
+--2. 수업번호, 수업명, 교수번호, 교수명 조회
+select * from tb_professor;
+
+select
+    C.class_no,
+    C.class_name,
+    P.professor_no,
+    P.professor_name
+from
+    tb_class_professor cp
+        right join tb_class C
+            on cp.class_no = c.class_no
+        right join tb_professor P
+            on cp.professor_no = p.professor_no;
+
+--3. 송박선 학생의 모든 학기 과목별 점수를 조회
+--      학기,학번,학생명,수업명,점수
+select
+    G.term_no,
+    s.student_no,
+    s.student_name,
+    C.class_name,
+    G.point
+from
+    tb_grade G
+        join tb_student S
+            on G.student_no = s.student_no
+        join tb_class C
+            on g.class_no = C.class_no
+where
+    s.student_name = '송박선';
+
+
+--4. 학생별 전체 평점(소숫점이하 버림) 조회
+-- 학번, 학생명, 평점
+select * from tb_student;
+
+select
+    G.student_no,
+    S.student_name,
+    trunc(avg(G.point))
+from
+    tb_grade G
+        join tb_student S
+            on G.student_no = S.student_no 
+group by
+    G.student_no,S.student_name;
+    
+--5. 교수번호, 교수명, 담당학생명수 조회
+-- 단, 5명 이상의 학생이 담당하는 교수만 출력
+select * from tb_student; --588개
+select * from tb_professor; -- 114개
+
+-- left join 588개 join + 9 (담당교수가 없는 학생포함)
+-- join 579 개   담당교수가 없는 학생 제외
+-- right join 580개 join + 1 (담당학생이 없는 교수 포함)
+
+select
+    p.professor_no,
+    p.professor_name,
+    count(s.coach_professor_no)
+from
+   tb_student s  right join  tb_professor p
+        on p.professor_no = s.coach_professor_no
+group by
+    s.coach_professor_no,  p.professor_no,p.professor_name
+having
+    count(s.coach_professor_no) >= 5;
+    
+
+    
+
+
