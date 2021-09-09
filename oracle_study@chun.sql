@@ -527,16 +527,22 @@ group by
    
 --13. 학과 별 휴학생 수를 파악하고자 한다. 학과 번호와 휴학생 수를 표시하는 SQL 문장을 작성하시오
 select
-    department_no,
-    count(*)
+    d.department_no,
+     SUM(
+        CASE 
+            WHEN S.ABSENCE_YN ='Y' THEN 1 
+            ELSE 0 END) AS "휴학생 수"
 from
-    tb_student
-where
-    absence_yn = 'Y'
+    tb_student s right join tb_department d
+    on s.department_no = d.department_no
+    
 group by
-    department_no
+    d.department_no
 order by
-    department_no asc;
+    d.department_no asc;
+
+
+    
 
 --14. 춘 대학교에 다니는 동명이인 학생들의 이름을 찾고자 한다.
 --      어떤 SQL문장을 사용하면 가능하겠는가?
@@ -584,3 +590,287 @@ from
     tb_grade
 where
     student_no = 'A112113';
+    
+    
+    
+    
+    
+SELECT 
+    DECODE(GROUPING(SUBSTR(TERM_NO, 1, 4)),0,SUBSTR(TERM_NO, 1, 4),1,'총평점') AS 년도,
+    DECODE(GROUPING(SUBSTR(TERM_NO, 5, 2)),0,SUBSTR(TERM_NO, 5, 2),1,'연별누적평점') AS 학기,
+    ROUND(AVG(POINT), 1) AS 평점
+FROM   
+    TB_GRADE
+WHERE  
+    STUDENT_NO = 'A112113'
+GROUP BY ROLLUP
+(SUBSTR(TERM_NO, 1, 4),SUBSTR(TERM_NO, 5, 2));
+
+-- 0908 실습문제
+--1. 학생이름과 주소지를 표싷시오, 단, 출력 헤더는 "학생이름", "주소지"로 하고,
+--  정렬은 이름으로 오름차순 표시하도록 한다.
+select * from tb_student;
+select
+    student_name,
+    student_address
+from
+    tb_student
+order by 
+    student_name asc;
+    
+--2. 휴학중인 학생들의 이름과 주민번호를 나이가 적은 순서로 화면에 출력
+select
+    student_name,
+    student_ssn
+from
+    tb_student
+where
+    absence_yn = 'Y'
+order by
+     extract(year from sysdate) -  (decode(substr(student_ssn,8,1),'1',1900,'2',1900,2000) + substr(student_ssn,1,2)) +1 asc;
+     
+     
+--3. 주소지가 강원도나 경기도인 학생들중 1900년대 학번을 가진 학생들의 이름과 학번,
+--  주소를 이름의 오름차순으로 화면에 출력
+
+select
+    student_name"학생이름",
+    student_no"학번",
+    student_address"거주지주소"
+from 
+    tb_student
+where
+    substr(student_address,1,3) in('경기도','강원도')
+    and
+    substr(student_no,1,1) = '9'
+order by
+    student_name asc;
+    
+--4.현재 법학과 교수 중 나이가 많은 사람부터 이름을 확인할 수 있는
+--  SQL 문장을 작성
+select * from tb_department where department_name = '법학과';
+select * from tb_professor;
+select
+    professor_name,
+    professor_ssn
+from
+    tb_professor
+where
+    department_no = '005'
+order by
+     extract(year from sysdate) -  (decode(substr(professor_ssn,8,1),'1',1900,'2',1900,2000) + substr(professor_ssn,1,2)) +1 desc;
+    
+--5. 2004년 2학기에 'C3118100'과목을 수강한 학생들의 학점을 조회
+--  학점이 높은 학생부터 표기, 학점이 같으면 학번이 낮은 학생부터 표시
+select * from tb_grade;
+
+select
+    student_no,
+    point
+from
+    tb_grade
+where
+    term_no = '200402'
+    and
+    class_no = 'C3118100'
+order by
+    point desc,
+    substr(student_no,2,6) asc;
+
+--6. 학생 번호, 학생 이름, 학과 이름을 학생 이름으로 오름차순 정렬하여 출력하는 sql문을 작성하시오
+
+select
+    student_no,
+    student_name,
+    (select department_name from tb_department where s.department_no = department_no )
+from
+    tb_student s
+order by
+    student_name asc;
+
+--7. 춘 기술대학교의 과목 이름과 과목의 학과 이름을 출력하는 sql문장 작성
+select * from tb_class;
+
+select
+    class_name,
+     (select department_name from tb_department where c.department_no = department_no )
+from
+    tb_class c;
+    
+--8. 과목별 교수 이름을 찾으려고 한다. 과목 이름과 교수 이름을 출력하는 sql문을 작성
+select * from tb_professor;
+select * from tb_department;
+
+select
+    c.class_name,
+    p.professor_name
+
+from
+    tb_class c join tb_class_professor cp
+    on c.class_no = cp.class_no
+    join tb_professor p
+    on  cp.professor_no = p.professor_no;
+    
+--9. 8번의 결과 중 '인문사회' 계열에 속한 과목의 교수 이름을 찾으려고 한다.
+--  이에 해당하는 과목 이름과 교수 이름을 출력하는 sql문장 작성
+
+select
+    c.class_name,
+    p.professor_name
+
+from
+    tb_class c join tb_class_professor cp
+    on c.class_no = cp.class_no
+    join tb_professor p
+    on  cp.professor_no = p.professor_no
+where
+    (select category from tb_department where p.department_no = department_no) in ('인문사회');
+    
+    
+--10. '음악학과' 학생들의 평점을 구하려고 한다. 음악학과 학생들의 "학번"
+--  "학생 이름", "전체 평점" 을 출력하는 sql 문장을 작성
+--  평점은 소수점 1자리까지만 반올림하여 표시
+select * from tb_student;
+
+select
+    student_no"학번",
+    student_name"학생 이름",
+    (select round(avg(point),1) from tb_grade where s.student_no = student_no)"전체평점"
+from
+    tb_student s
+where
+    (select department_name from tb_department where s.department_no = department_no) in ('음악학과');
+    
+--11. 학번이 A313047인 학생이 학교에 안나옴, 지도교수에게 내용을
+-- 전달하기 위해 학과 이름, 학생 이름, 지도 교수 이름이 출력
+select
+    (select department_name from tb_department where s.department_no = department_no)"학과이름",
+    student_name"학생이름",
+    (select professor_name from tb_professor where s.coach_professor_no = professor_no)"지도교수이름"
+from
+    tb_student s
+where
+    student_no = 'A313047';
+    
+-- 12. 2007년도에 '인간관계론' 과목을 수강한 학생을 찾아 학생이름과
+-- 수강 학기를 표시하는 sql 문장을 작성하시오
+select * from tb_department;
+
+select
+    (select student_name from tb_student where g.student_no = student_no)"학생이름",
+    term_no
+from
+    tb_grade g
+where
+    substr(term_no,1,4) = '2007'
+    and
+    (select class_name from tb_class where g.class_no = class_no) in ('인간관계론');
+
+-- 13. 예체능 계열 과목 중 과목 담당교수를 한 명도 배정받지 못한 과목을
+--  찾아 그 과목 이름과 학과 이름을 출력하는 sql문장을 작성하시오
+select * from tb_department;
+select
+    c.class_name,
+    d.department_name
+from
+    tb_class c left join tb_class_professor cp
+    on c.class_no = cp.class_no
+    join tb_department d
+    on c.department_no = d.department_no
+where
+    cp.professor_no is null
+    and
+    d.category in ('예체능');
+    
+
+-- 14. 춘 기술대학교 서반아어학과 학생들의 지도교수를 게시하고자 한다.
+--      학생이름과 지도교수 이름을 찾고 만일 지도 교수가 없는 학생일 경우
+--      "지도교수 미지정"으로 표시, 고학번 학생이 먼저 표시되도록 한다.
+
+select
+    student_name"학생이름",
+    nvl(p.professor_name,'지도교수 미지정')"지도교수"
+from
+    tb_student s left join tb_professor p
+    on s.coach_professor_no = p.professor_no
+where
+    (select department_name from tb_department where department_no = s.department_no) in ('서반아어학과')
+order by
+    substr(student_no,2,6) asc;
+    
+
+--15. 휴학생이 아닌 학생 중 평점이 4.0이상인 학생을 찾아 학번, 이름,학과
+--      이름,평점을 출력하는 sql작성
+select * from tb_student;
+
+select
+    s.student_no"학번",
+    s.student_name"이름",
+    (select department_name from tb_department where department_no = s.department_no)"학과 이름",
+    (select avg(point) from tb_grade where student_no = s.student_no)"평점"
+from
+    tb_student s
+where
+    absence_yn = 'N'
+    and
+    (select avg(point) from tb_grade where student_no = s.student_no) >= 4.0;
+    
+
+--16. 환경조경학과 전공과목들의 과목 별 평점을 파악할 수 있는 sql문을 작성
+
+
+select
+    c.class_no,
+    c.class_name,
+    (select avg(point) from tb_grade where c.class_no = class_no)"평점"
+from
+    tb_department d join tb_class c
+    on d.department_no = c.department_no
+where
+    d.department_name = '환경조경학과'
+    and
+   substr(c.class_type,1,2) = '전공';
+   
+--17. 춘 기술대학교에 다니는 최경희 학생과 같은 과 학생들의 이름과 주소를 출력
+select
+    student_name,
+    student_address
+from
+    tb_student s
+    
+where
+    s.department_no = (select department_no from tb_student where student_name = '최경희');
+    
+ 
+--18. 국어 국문학과에서 총 평점이 가장 높은 학생의 이름과 학번을
+--      표시하는 SQL문을 작성
+select
+    s.student_no,
+    s.student_name
+from
+    tb_student s
+where
+    (select department_name from tb_department where department_no = s.department_no) in ('국어국문학과');    
+    
+
+--19. 춘 기술대학교의 "환경조경학과" 가 속한 같은 계열 학과들의
+--      학과 별 전공과목 평점을 파악하기 위한 sql문 작성
+--      평점은 소수점 한자리 반올림
+select * from tb_department;
+select * from tb_class;
+
+select
+    d.department_name"계열 학과명",
+    round(avg(g.point),1)
+from
+    tb_department d join tb_class c
+    on d.department_no = c.department_no
+    join tb_grade g
+    on c.class_no = g.class_no
+where
+    category in ((select category from tb_department where department_name = '환경조경학과'))
+    and
+    substr(c.class_type,1,2) in ('전공')
+group by
+    d.department_name;
+    
